@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stern-Gerlach Simulation</title>
+    <style>
+        /* Modern System Fonts & Deep Dark Theme */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #0f172a; 
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            margin: 0;
+            position: relative; 
+        }
+        
+        .version-text {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            color: #475569;
+            font-size: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            pointer-events: none; 
+            letter-spacing: 0.5px;
+        }
+
+        /* Typography */
+        h1 { 
+            margin: 0 0 10px 0; 
+            color: #f8fafc; 
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        p.subtitle { 
+            margin-bottom: 25px; 
+            color: #94a3b8; 
+            max-width: 650px; 
+            text-align: center; 
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        /* Canvas Layout */
+        .simulation-container {
+            display: flex;
+            gap: 25px;
+            align-items: flex-start;
+            margin-bottom: 25px;
+        }
+
+        canvas {
+            background-color: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+        }
+
+        /* Control Panel layout */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            width: 100%;
+            max-width: 1225px;
+            box-sizing: border-box;
+        }
+
+        .buttons-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 20px;
+        }
+
+        .control-panel-section {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .section-header {
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .sliders-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sliders-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .control-group {
+            background: #1e293b;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease;
+        }
+
+        .highlight-group {
+            border-color: #0284c7;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 0 0 1px #0284c7;
+        }
+
+        /* Modern Buttons */
+        button {
+            padding: 12px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.4);
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px -2px rgba(37, 99, 235, 0.5);
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+        }
+        button:active { 
+            transform: translateY(1px); 
+            box-shadow: 0 2px 4px -1px rgba(37, 99, 235, 0.4);
+        }
+
+        button.active-mode { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
+        }
+        button.active-mode:hover { 
+            background: linear-gradient(135deg, #34d399, #10b981);
+            box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.5);
+        }
+
+        button#clearBtn { 
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.4);
+        }
+        button#clearBtn:hover { 
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            box-shadow: 0 6px 12px -2px rgba(239, 68, 68, 0.5);
+        }
+
+        button#fireBtn.firing {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.4);
+            animation: pulseFire 2s infinite;
+        }
+
+        @keyframes pulseFire {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        
+        /* Typography for Controls */
+        label { font-weight: 600; font-size: 13px; color: #cbd5e1; white-space: nowrap; }
+        .value-display { 
+            display: inline-block; 
+            min-width: 40px; 
+            color: #38bdf8; 
+            font-weight: 700; 
+            font-size: 14px; 
+            text-align: right; 
+            font-family: monospace;
+        }
+
+        /* Custom Range Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            min-width: 100px;
+            background: transparent;
+        }
+        input[type="range"]:focus { outline: none; }
+        input[type="range"]:disabled { cursor: not-allowed; }
+        input[type="range"]:disabled::-webkit-slider-thumb { background: #64748b; box-shadow: none; cursor: not-allowed; transform: none; }
+        input[type="range"]:disabled::-moz-range-thumb { background: #64748b; box-shadow: none; cursor: not-allowed; transform: none; }
+        
+        /* Webkit Tracks & Thumbs */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            transition: transform 0.1s;
+        }
+        input[type="range"]:not(:disabled)::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #7dd3fc;
+        }
+        
+        /* Firefox Tracks & Thumbs */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            transition: transform 0.1s;
+        }
+        input[type="range"]:not(:disabled)::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            background: #7dd3fc;
+        }
+
+        /* Toggle Switch CSS */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            margin: 0 10px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider-toggle {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 20px;
+        }
+        .slider-toggle:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider-toggle {
+            background-color: #fbbf24;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+        }
+        input:checked + .slider-toggle:before {
+            transform: translateX(20px);
+        }
+        input:disabled + .slider-toggle {
+            cursor: not-allowed;
+            background-color: #1e293b;
+            box-shadow: none;
+        }
+        input:disabled + .slider-toggle:before {
+            background-color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="version-text">version: April 22, 2026, 9:38 AM</div>
+
+    <h1>Stern-Gerlach Physics Engine</h1>
+    <p class="subtitle">Classic mode respresents the expected results of Stern and Gerlach that obeys classical physics. The quantum mdoe demonstrates the actual outcome of the experiment. Particles with a spin up are represented with blue, and particles with a spin down are represented with red. </p>
+
+    <div class="simulation-container">
+        <canvas id="simCanvas" width="800" height="400"></canvas>
+        <canvas id="graphCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="buttons-row">
+            <button id="fireBtn">Fire Particle Beam</button>
+            <button id="modeBtn" class="active-mode">Mode: Quantum</button>
+            <button id="clearBtn">Clear All Data</button>
+        </div>
+        
+        <div class="settings-grid">
+            <div class="control-panel-section">
+                <div class="section-header">Simulation Parameters</div>
+                <div class="sliders-row">
+                    <div class="control-group" id="spinGroup" style="opacity: 0.4;">
+                        <label for="spinSlider">Particle Spin (Classical):</label>
+                        <input type="range" id="spinSlider" min="0" max="360" value="90" disabled>
+                        <span id="spinDisplay" class="value-display" style="color: #fbbf24;">90°</span>
+                    </div>
+                </div>
+                <div class="sliders-row">
+                    <div class="control-group" id="randomSpinGroup" style="opacity: 0.4;">
+                        <label for="randomSpinToggle">Random Spin (Classical):</label>
+                        <label class="switch">
+                            <input type="checkbox" id="randomSpinToggle" checked disabled>
+                            <span class="slider-toggle"></span>
+                        </label>
+                        <span id="randomSpinDisplay" class="value-display" style="color: #fbbf24; font-size: 13px;">ON</span>
+                    </div>
+                </div>
+                <div class="sliders-row">
+                    <div class="control-group highlight-group">
+                        <label style="color: #38bdf8;" for="graphZoomSlider">Graph Zoom Limit:</label>
+                        <input type="range" id="graphZoomSlider" min="5" max="100" value="25">
+                        <span id="graphZoomDisplay" class="value-display">25%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel-section">
+                <div class="section-header">Magnetic Field Controls</div>
+                <div class="sliders-column">
+                    <div class="control-group">
+                        <label style="width: 70px;" for="mag1Strength">Magnet 1:</label>
+                        <input type="range" id="mag1Strength" min="0" max="200" value="0">
+                        <span id="mag1StrDisplay" class="value-display">0.0x</span>
+                    </div>
+                    <div class="control-group">
+                        <label style="width: 70px; color: #94a3b8;" for="mag1Angle">Angle 1:</label>
+                        <input type="range" id="mag1Angle" min="0" max="360" value="90">
+                        <span id="mag1AngleDisplay" class="value-display" style="color: #fbbf24;">90°</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label style="width: 70px;" for="mag2Strength">Magnet 2:</label>
+                        <input type="range" id="mag2Strength" min="0" max="200" value="0">
+                        <span id="mag2StrDisplay" class="value-display">0.0x</span>
+                    </div>
+                    <div class="control-group">
+                        <label style="width: 70px; color: #94a3b8;" for="mag2Angle">Angle 2:</label>
+                        <input type="range" id="mag2Angle" min="0" max="360" value="90">
+                        <span id="mag2AngleDisplay" class="value-display" style="color: #fbbf24;">90°</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label style="width: 70px;" for="mag3Strength">Magnet 3:</label>
+                        <input type="range" id="mag3Strength" min="0" max="200" value="100">
+                        <span id="mag3StrDisplay" class="value-display">1.0x</span>
+                    </div>
+                    <div class="control-group">
+                        <label style="width: 70px; color: #94a3b8;" for="mag3Angle">Angle 3:</label>
+                        <input type="range" id="mag3Angle" min="0" max="360" value="90">
+                        <span id="mag3AngleDisplay" class="value-display" style="color: #fbbf24;">90°</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label style="flex: 1;" for="showFieldToggle">Show Magnetic Field Vectors:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="showFieldToggle">
+                            <span class="slider-toggle"></span>
+                        </label>
+                        <span id="showFieldDisplay" class="value-display" style="color: #94a3b8; font-size: 13px;">OFF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const simCanvas = document.getElementById('simCanvas');
+        const ctx = simCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+        
+        let isQuantum = true;
+        let isClassicalRandom = true; 
+        let isFiring = false;
+        let showFieldVectors = false;
+        let particles = [];
+        let hits = []; 
+
+        const baseSpawnRate = 0.05; 
+        const maxSpawnRate = 1.0;   
+        let currentSpawnRate = baseSpawnRate;
+
+        // Magnet definitions - Defaults set to 90 degrees (North/Up)
+        const magnets = [
+            { x: 120, w: 90, colorN: '#ef4444', colorS: '#3b82f6', angle: 90, strength: 0.0 }, 
+            { x: 300, w: 90, colorN: '#a855f7', colorS: '#14b8a6', angle: 90, strength: 0.0 }, 
+            { x: 480, w: 90, colorN: '#f97316', colorS: '#22c55e', angle: 90, strength: 1.0 }  
+        ];
+
+        // UI Event Listener for Particle Spin
+        document.getElementById('spinSlider').addEventListener('input', (e) => {
+            document.getElementById('spinDisplay').textContent = `${e.target.value}°`;
+            
+            // Turn off random spin mode when manually adjusting the slider
+            if (isClassicalRandom && !isQuantum) {
+                isClassicalRandom = false;
+                document.getElementById('randomSpinToggle').checked = false;
+                document.getElementById('randomSpinDisplay').textContent = "OFF";
+                document.getElementById('randomSpinDisplay').style.color = "#94a3b8";
+            }
+        });
+
+        // UI Event Listener for Random Spin Toggle
+        document.getElementById('randomSpinToggle').addEventListener('change', (e) => {
+            isClassicalRandom = e.target.checked;
+            const display = document.getElementById('randomSpinDisplay');
+            display.textContent = isClassicalRandom ? "ON" : "OFF";
+            display.style.color = isClassicalRandom ? "#fbbf24" : "#94a3b8";
+        });
+
+        // UI Event Listener for Show Field Vectors
+        document.getElementById('showFieldToggle').addEventListener('change', (e) => {
+            showFieldVectors = e.target.checked;
+            const display = document.getElementById('showFieldDisplay');
+            display.textContent = showFieldVectors ? "ON" : "OFF";
+            display.style.color = showFieldVectors ? "#fbbf24" : "#94a3b8";
+        });
+
+        // UI Event Listeners for Strengths & Angles
+        ['1', '2', '3'].forEach((num, index) => {
+            // Update Strength
+            document.getElementById(`mag${num}Strength`).addEventListener('input', (e) => {
+                let val = parseInt(e.target.value) / 100; 
+                magnets[index].strength = val;
+                document.getElementById(`mag${num}StrDisplay`).textContent = `${val.toFixed(1)}x`;
+            });
+            // Update Angle
+            document.getElementById(`mag${num}Angle`).addEventListener('input', (e) => {
+                let val = parseInt(e.target.value); 
+                magnets[index].angle = val;
+                document.getElementById(`mag${num}AngleDisplay`).textContent = `${val}°`;
+            });
+        });
+
+        // UI Event Listener for Graph Zoom
+        let graphMaxPercent = 25;
+        document.getElementById('graphZoomSlider').addEventListener('input', (e) => {
+            graphMaxPercent = parseInt(e.target.value);
+            document.getElementById('graphZoomDisplay').textContent = `${graphMaxPercent}%`;
+            drawProbabilityGraph(); 
+        });
+
+        const detectorX = 700;
+        const detectorMinY = 20;
+        const detectorMaxY = 380;
+        const detectorHeight = detectorMaxY - detectorMinY; 
+        const maxDeflectionVelocity = 1.2; 
+
+        const numBins = 50; 
+        let distributionBins = new Array(numBins).fill(0);
+        const binSizeY = detectorHeight / numBins; 
+
+        document.getElementById('modeBtn').addEventListener('click', (e) => {
+            isQuantum = !isQuantum;
+            e.target.textContent = `Mode: ${isQuantum ? 'Quantum' : 'Classical'}`;
+            e.target.className = isQuantum ? 'active-mode' : '';
+            
+            // Toggle the Sliders and Switches based on mode
+            const spinGroup = document.getElementById('spinGroup');
+            const spinSlider = document.getElementById('spinSlider');
+            const randomSpinGroup = document.getElementById('randomSpinGroup');
+            const randomSpinToggle = document.getElementById('randomSpinToggle');
+
+            if (isQuantum) {
+                spinSlider.disabled = true;
+                spinGroup.style.opacity = '0.4';
+                randomSpinToggle.disabled = true;
+                randomSpinGroup.style.opacity = '0.4';
+            } else {
+                spinSlider.disabled = false;
+                spinGroup.style.opacity = '1';
+                randomSpinToggle.disabled = false;
+                randomSpinGroup.style.opacity = '1';
+            }
+            
+            clearGraphData(); 
+        });
+
+        document.getElementById('fireBtn').addEventListener('click', (e) => {
+            isFiring = !isFiring;
+            currentSpawnRate = isFiring ? baseSpawnRate : baseSpawnRate;
+            e.target.textContent = isFiring ? 'Stop Firing' : 'Fire Particle Beam';
+            
+            // Toggle the firing animation class
+            if (isFiring) {
+                e.target.classList.add('firing');
+            } else {
+                e.target.classList.remove('firing');
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            hits = [];
+            clearGraphData();
+        });
+
+        function clearGraphData() {
+            distributionBins = new Array(numBins).fill(0);
+        }
+
+        function spawnParticle() {
+            let userSpinAngle = parseInt(document.getElementById('spinSlider').value);
+            
+            let initialAngle;
+            if (isQuantum) {
+                initialAngle = Math.random() * Math.PI * 2; 
+            } else if (isClassicalRandom) {
+                initialAngle = Math.random() * Math.PI * 2; 
+            } else {
+                initialAngle = userSpinAngle * (Math.PI / 180); 
+            }
+
+            let p = {
+                x: 30,
+                y: 200, 
+                vx: 5.5, 
+                vy: 0,
+                // Quantum starts neutral white/grey until measured
+                color: isQuantum ? '#e2e8f0' : '#fbbf24', 
+                magnetStage: 0,
+                internalAngle: initialAngle 
+            };
+            particles.push(p);
+        }
+
+        function update() {
+            if (isFiring) {
+                currentSpawnRate = Math.min(currentSpawnRate + 0.005, maxSpawnRate);
+                if (Math.random() < currentSpawnRate) {
+                    spawnParticle();
+                    if (currentSpawnRate === maxSpawnRate && Math.random() < 0.3) spawnParticle();
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                
+                for (let m = 0; m < magnets.length; m++) {
+                    let mag = magnets[m];
+                    if (p.x >= mag.x && p.x <= mag.x + mag.w && p.magnetStage === m) {
+                        
+                        let magAngleRad = mag.angle * (Math.PI / 180);
+                        let strengthMultiplier = mag.strength;
+
+                        if (isQuantum) {
+                            let deltaTheta = magAngleRad - p.internalAngle;
+                            let probUp = Math.pow(Math.cos(deltaTheta / 2), 2);
+                            
+                            let thermalNoise = (Math.random() + Math.random() + Math.random() - 1.5) * 0.15;
+                            
+                            if (Math.random() < probUp) {
+                                // Deflect based on measured state vs relative phase
+                                p.vy -= (maxDeflectionVelocity * strengthMultiplier) + (strengthMultiplier > 0 ? thermalNoise : 0);
+                                p.internalAngle = magAngleRad; 
+                                p.color = '#38bdf8'; // Blue for Spin Up
+                            } else {
+                                p.vy += (maxDeflectionVelocity * strengthMultiplier) + (strengthMultiplier > 0 ? thermalNoise : 0);
+                                p.internalAngle = magAngleRad + Math.PI; 
+                                p.color = '#ef4444'; // Red for Spin Down
+                            }
+
+                        } else {
+                            // Classical Force Calculation incorporates new relative angles directly
+                            let deltaTheta = magAngleRad - p.internalAngle;
+                            let forceProjection = Math.cos(deltaTheta);
+                            
+                            p.vy -= (maxDeflectionVelocity * strengthMultiplier) * forceProjection;
+                        }
+
+                        p.magnetStage++; 
+                    }
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x >= detectorX) {
+                    hits.push({ y: p.y, color: p.color });
+
+                    let binIndex = Math.floor((p.y - detectorMinY) / binSizeY);
+                    if (binIndex >= 0 && binIndex < numBins) {
+                        distributionBins[binIndex]++;
+                    }
+                    particles.splice(i, 1); 
+                }
+            }
+        }
+
+        function drawMainSimulation() {
+            ctx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+            // Oven Body
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(5, 180, 50, 40);
+            
+            // Oven Glow/Fire
+            if (isFiring) {
+                ctx.fillStyle = `rgba(245, 158, 11, ${currentSpawnRate * 0.8})`;
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 10;
+                ctx.fillRect(45, 185, 10, 30);
+                ctx.shadowBlur = 0; 
+            }
+            
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 12px system-ui, sans-serif';
+            ctx.fillText('OVEN', 12, 240);
+
+            // Draw Magnets (Neon Glow Style)
+            magnets.forEach((mag) => {
+                
+                // === NORTH POLE ===
+                ctx.save();
+                ctx.shadowColor = mag.colorN;
+                ctx.shadowBlur = 18; 
+                ctx.fillStyle = mag.colorN;
+                
+                ctx.beginPath();
+                ctx.moveTo(mag.x, 90);
+                ctx.lineTo(mag.x + mag.w / 2, 150); 
+                ctx.lineTo(mag.x + mag.w, 90);
+                ctx.closePath();
+                ctx.fill();
+
+                // N Label
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.font = 'bold 13px system-ui, sans-serif';
+                ctx.fillText(`N`, mag.x + mag.w/2 - 5, 85);
+                ctx.restore();
+
+
+                // === SOUTH POLE ===
+                ctx.save();
+                ctx.shadowColor = mag.colorS;
+                ctx.shadowBlur = 18;
+                ctx.fillStyle = mag.colorS;
+                
+                ctx.beginPath();
+                ctx.rect(mag.x, 250, mag.w, 50);
+                ctx.fill();
+
+                // S Label
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.font = 'bold 13px system-ui, sans-serif';
+                ctx.fillText(`S`, mag.x + mag.w/2 - 5, 315);
+                ctx.restore();
+
+
+                // === FIELD LINES & VECTORS ===
+                let lineOpacity = Math.min(0.5, 0.3 * mag.strength);
+                if (mag.strength > 0) {
+                    ctx.save();
+                    ctx.shadowColor = mag.colorN; 
+                    ctx.shadowBlur = 5;
+                    ctx.strokeStyle = `rgba(148, 163, 184, ${lineOpacity})`;
+                    ctx.setLineDash([4, 6]);
+                    ctx.lineWidth = 1.5;
+                    for (let x = mag.x + 15; x < mag.x + mag.w; x += 30) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 145); ctx.lineTo(x, 245);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                // Draw Magnet Measurement Vector (Rotates based on slider angle)
+                if (showFieldVectors) {
+                    ctx.save();
+                    let cx = mag.x + mag.w / 2;
+                    let cy = 200; // Center of the gap between N and S
+                    let arrowLen = 35;
+                    
+                    // Convert chosen slider angle to Radians
+                    let magAngleRad = mag.angle * (Math.PI / 180);
+                    
+                    // Apply rotation to endpoint (0 = Right, 90 = Up)
+                    let vEndX = cx + arrowLen * Math.cos(magAngleRad);
+                    let vEndY = cy - arrowLen * Math.sin(magAngleRad);
+
+                    ctx.strokeStyle = '#fbbf24'; 
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(vEndX, vEndY);
+                    ctx.stroke();
+
+                    // Arrowhead
+                    let headLen = 8;
+                    let angle = Math.atan2(cy - vEndY, cx - vEndX);
+                    ctx.beginPath();
+                    ctx.moveTo(vEndX, vEndY);
+                    ctx.lineTo(vEndX + headLen * Math.cos(angle - Math.PI / 6), vEndY + headLen * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(vEndX + headLen * Math.cos(angle + Math.PI / 6), vEndY + headLen * Math.sin(angle + Math.PI / 6));
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+
+            // Detector Screen
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(detectorX, detectorMinY, 20, detectorHeight);
+
+            // Draw Hits
+            hits.forEach(hit => {
+                ctx.fillStyle = hit.color;
+                ctx.globalAlpha = 0.6; 
+                ctx.beginPath();
+                ctx.arc(detectorX + 10, hit.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+
+            // Draw Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; 
+            });
+        }
+
+        function drawProbabilityGraph() {
+            graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            
+            // Title
+            graphCtx.fillStyle = '#f8fafc';
+            graphCtx.font = 'bold 15px system-ui, sans-serif';
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText(isQuantum ? "Quantum Probability Density" : "Classical Probability Density", graphCanvas.width / 2, 30);
+
+            const marginL = 25, marginB = 25, marginT = 65, marginR = 60; 
+            const gWidth = graphCanvas.width - marginL - marginR;
+            const gHeight = graphCanvas.height - marginT - marginB;
+
+            // Y-axis Label
+            graphCtx.fillStyle = '#94a3b8';
+            graphCtx.font = '12px system-ui, sans-serif';
+            graphCtx.save();
+            graphCtx.translate(marginL + gWidth + 45, marginT + gHeight / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText("Screen Position", 0, 0);
+            graphCtx.restore();
+            
+            // X-axis Main Label
+            graphCtx.textAlign = 'center';
+            graphCtx.fillText("Percentage of Total Hits (%)", marginL + gWidth / 2, marginT - 25);
+
+            if (hits.length === 0) {
+                graphCtx.fillStyle = '#64748b';
+                graphCtx.font = 'italic 14px system-ui, sans-serif';
+                graphCtx.fillText("Fire beam to collect data", marginL + gWidth / 2, marginT + gHeight / 2);
+                return;
+            }
+
+            // X-Axis Number Line
+            graphCtx.fillStyle = '#cbd5e1';
+            graphCtx.font = '11px monospace';
+            
+            graphCtx.textAlign = 'left';
+            graphCtx.fillText("0%", marginL, marginT - 8);
+            
+            graphCtx.textAlign = 'center';
+            let midVal = graphMaxPercent / 2;
+            let midStr = Number.isInteger(midVal) ? midVal + "%" : midVal.toFixed(1) + "%";
+            graphCtx.fillText(midStr, marginL + gWidth / 2, marginT - 8);
+            
+            graphCtx.textAlign = 'right';
+            graphCtx.fillText(graphMaxPercent + "%", marginL + gWidth, marginT - 8);
+
+            const cx = marginL + gWidth / 2;
+            const cy = marginT + gHeight / 2;
+            
+            graphCtx.save();
+            graphCtx.translate(cx, cy);
+            graphCtx.rotate(Math.PI); 
+            graphCtx.translate(-cx, -cy);
+
+            // Draw background grid lines (subtle)
+            graphCtx.strokeStyle = 'rgba(148, 163, 184, 0.1)';
+            graphCtx.lineWidth = 1;
+            graphCtx.beginPath();
+            graphCtx.moveTo(marginL + gWidth / 2, marginT);
+            graphCtx.lineTo(marginL + gWidth / 2, marginT + gHeight);
+            graphCtx.moveTo(marginL + gWidth / 4, marginT);
+            graphCtx.lineTo(marginL + gWidth / 4, marginT + gHeight);
+            graphCtx.moveTo(marginL + (gWidth * 0.75), marginT);
+            graphCtx.lineTo(marginL + (gWidth * 0.75), marginT + gHeight);
+            graphCtx.stroke();
+
+            // Draw Main Axes
+            graphCtx.strokeStyle = '#475569';
+            graphCtx.lineWidth = 2;
+            graphCtx.beginPath();
+            graphCtx.moveTo(marginL, marginT);
+            graphCtx.lineTo(marginL, marginT + gHeight); 
+            graphCtx.lineTo(marginL + gWidth, marginT + gHeight); 
+            graphCtx.stroke();
+
+            const binHeight = gHeight / numBins;
+            const totalHits = hits.length;
+
+            let points = [];
+            for (let i = 0; i < numBins; i++) {
+                const count = distributionBins[i];
+                const percentOfTotal = (count / totalHits) * 100;
+                let visualWidth = (percentOfTotal / graphMaxPercent) * gWidth;
+                
+                if (visualWidth > gWidth) visualWidth = gWidth;
+
+                const y = marginT + (i * binHeight) + (binHeight / 2);
+                const x = marginL + visualWidth;
+                points.push({ x: count > 0 ? x : marginL, y: y });
+            }
+
+            if (points.length > 0) {
+                const isQ = isQuantum;
+                
+                // Filled Area
+                graphCtx.beginPath();
+                graphCtx.moveTo(marginL, points[0].y);
+                graphCtx.lineTo(points[0].x, points[0].y);
+                for (let i = 0; i < points.length - 1; i++) {
+                    let xc = (points[i].x + points[i + 1].x) / 2;
+                    let yc = (points[i].y + points[i + 1].y) / 2;
+                    graphCtx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                }
+                graphCtx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+                graphCtx.lineTo(marginL, points[points.length - 1].y);
+                
+                let gradient = graphCtx.createLinearGradient(marginL, 0, marginL + gWidth, 0);
+                if (isQ) {
+                    gradient.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
+                    gradient.addColorStop(1, 'rgba(56, 189, 248, 0.3)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.05)');
+                    gradient.addColorStop(1, 'rgba(251, 191, 36, 0.3)');
+                }
+                
+                graphCtx.fillStyle = gradient;
+                graphCtx.fill();
+                
+                // Smooth Outer Line
+                graphCtx.beginPath();
+                graphCtx.moveTo(points[0].x, points[0].y);
+                for (let i = 0; i < points.length - 1; i++) {
+                    let xc = (points[i].x + points[i + 1].x) / 2;
+                    let yc = (points[i].y + points[i + 1].y) / 2;
+                    graphCtx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                }
+                graphCtx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+
+                graphCtx.strokeStyle = isQ ? '#38bdf8' : '#fbbf24'; 
+                graphCtx.lineWidth = 3;
+                graphCtx.lineJoin = 'round';
+                graphCtx.stroke();
+            }
+            
+            graphCtx.restore(); 
+        }
+
+        function simulationLoop() {
+            update();
+            drawMainSimulation();
+            drawProbabilityGraph();
+            requestAnimationFrame(simulationLoop);
+        }
+
+        simulationLoop();
+    </script>
+</body>
+</html>
